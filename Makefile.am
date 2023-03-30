@@ -14,10 +14,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-SUBDIRS = tests doc
+SUBDIRS = . tests doc
 
 ACLOCAL_AMFLAGS = -I m4
 
 AM_LDFLAGS = -no-undefined -avoid-version -module
 
+pamdir = @pamdir@
+
 pam_LTLIBRARIES = pam_session_timelimit.la
+
+pam_session_timelimit_la_SOURCES = pam_session_timelimit.c
+pam_session_timelimit_la_LIBADD = -lpam
