@@ -32,7 +32,7 @@ AC_ARG_WITH(
         [pam-dir],
         AS_HELP_STRING([--with-pam-dir],
                        [Directory where to install the module (defaults to ${libdir}/security]),
-        [pamdir=$withval], [pam="${libdir}/security"])
+        [pamdir=$withval], [pamdir="${libdir}/security"])
 
 AC_SUBST(pamdir)
 AC_CONFIG_FILES([Makefile])
