@@ -11,6 +11,7 @@ Vcs-Git: https://github.com/vorlonofportland/pam_session_timelimit -b debian
 
 Package: pam-session-timelimit
 Architecture: any
+Multi-Arch: same
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
