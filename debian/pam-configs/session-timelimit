@@ -1,0 +1,6 @@
+Name: Session Time Limits
+Default: yes
+Priority: 256
+Account-Type: Additional
+Account:
+	required			pam_session_timelimit.so

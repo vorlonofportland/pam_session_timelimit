@@ -1,0 +1,19 @@
+Source: pam-session-timelimit
+Section: admin
+Priority: optional
+Maintainer: Steve Langasek <vorlon@debian.org>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ autotools-dev,
+Standards-Version: 4.6.2
+Homepage: https://github.com/vorlonofportland/pam_session_timelimit
+Vcs-Git: https://github.com/vorlonofportland/pam_session_timelimit -b debian
+
+Package: pam-session-timelimit
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Description: PAM module to permit configuring time limits for user sessions
+ This module lets you pass session time limit information to pam_systemd.

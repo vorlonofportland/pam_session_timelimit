@@ -1,0 +1,5 @@
+pam-session-timelimit (0.1-1) UNRELEASED; urgency=medium
+
+  * Initial release.
+
+ -- Steve Langasek <vorlon@debian.org>  Thu, 30 Mar 2023 22:43:42 +0000
