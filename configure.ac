@@ -35,6 +35,6 @@ AC_ARG_WITH(
         [pamdir=$withval], [pamdir="${libdir}/security"])
 
 AC_SUBST(pamdir)
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile tests/Makefile doc/Makefile])
 
 AC_OUTPUT
