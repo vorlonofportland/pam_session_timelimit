@@ -27,11 +27,11 @@
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 
+#include "config.h"
 
 #define UNUSED __attribute__((unused))
 
-/* FIXME: this will be a configurable directory */
-#define DEFAULT_CONFIG_PATH "/etc/security/time_limits.conf"
+#define DEFAULT_CONFIG_PATH CONFIGDIR "/time_limits.conf"
 
 
 static void cleanup(pam_handle_t *handle UNUSED, void *data, int err UNUSED)

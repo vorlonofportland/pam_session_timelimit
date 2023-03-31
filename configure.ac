@@ -19,6 +19,7 @@ AC_PREREQ(2.63)
 AC_INIT([pam_session_timelimit], [0.1],
         [https://github.com/vorlonofportland/pam_session_timelimit/issues])
 
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_HOST
 
@@ -43,6 +44,9 @@ AC_ARG_WITH(
 	[configdir=$withval], [configdir="${sysconfdir}/security"])
 
 AC_SUBST(configdir)
+
+AC_DEFINE_UNQUOTED(CONFIGDIR, "$configdir",
+                   [Define to the directory used for the config file])
 
 AC_CONFIG_FILES([Makefile tests/Makefile doc/Makefile])
 
