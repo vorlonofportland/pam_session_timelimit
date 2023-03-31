@@ -20,7 +20,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_LDFLAGS = -no-undefined -avoid-version -module
 
-EXTRA_DIST = time_limits.conf
+dist_config_DATA = time_limits.conf
 
 pamdir = @pamdir@
 
