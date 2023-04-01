@@ -1,0 +1,3 @@
+# config file has valid entries, but at least one entry missing a limit
+buzz	infinity
+john

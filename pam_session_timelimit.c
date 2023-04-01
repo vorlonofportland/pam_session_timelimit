@@ -109,7 +109,7 @@ static int parse_config_line(char *line, char **user, char **limit)
 
 
 static int parse_config_file(pam_handle_t *handle, const char *path,
-                             char ***user_table)
+                             const char ***user_table)
 {
 	FILE *config_file;
 	struct stat statbuf;
@@ -168,7 +168,7 @@ static int parse_config_file(pam_handle_t *handle, const char *path,
 		free(results);
 		return PAM_IGNORE;
 	}
-	*user_table = results;
+	*user_table = (const char **)results;
 	return PAM_SUCCESS;
 }
 
