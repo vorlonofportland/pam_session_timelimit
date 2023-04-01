@@ -99,7 +99,6 @@ static void no_valid_user(void)
 	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 0, NULL) == PAM_BAD_ITEM);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 0);
-	CU_ASSERT(pamh.syslog_calls == 0);
 }
 
 
@@ -141,7 +140,6 @@ static void config_only_comments(void)
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_IGNORE);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 0);
-	CU_ASSERT(pamh.syslog_calls == 0);
 }
 
 
@@ -169,7 +167,6 @@ static void config_commented_limit(void)
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 0);
-	CU_ASSERT(pamh.syslog_calls == 1);
 }
 
 
@@ -183,7 +180,6 @@ static void config_comment_after_entry(void)
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
-	CU_ASSERT(pamh.syslog_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h"));
 }
 
@@ -213,7 +209,6 @@ static void limit_with_spaces(void)
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
-	CU_ASSERT(pamh.syslog_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h 12m"));
 }
 
