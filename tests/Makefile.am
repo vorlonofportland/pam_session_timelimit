@@ -20,3 +20,4 @@ noinst_PROGRAMS = tests
 
 tests_SOURCES = tests.c
 tests_LDADD = -lcunit
+tests_LDFLAGS = -export-dynamic
