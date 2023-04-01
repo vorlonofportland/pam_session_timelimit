@@ -5,6 +5,8 @@ Maintainer: Steve Langasek <vorlon@debian.org>
 Rules-Requires-Root: no
 Build-Depends:
  debhelper-compat (= 13),
+ libcunit1-dev,
+ libpam0g-dev,
 Standards-Version: 4.6.2
 Homepage: https://github.com/vorlonofportland/pam_session_timelimit
 Vcs-Git: https://github.com/vorlonofportland/pam_session_timelimit -b debian
