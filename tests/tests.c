@@ -92,6 +92,17 @@ static void invalid_module_argument(void)
 }
 
 
+static void no_valid_user(void)
+{
+	memset(&pamh, '\0', sizeof(pam_handle_t));
+
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 0, NULL) == PAM_BAD_ITEM);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 0);
+	CU_ASSERT(pamh.syslog_calls == 0);
+}
+
+
 static void no_config_file(void)
 {
 	const char *arg = "path=data/non-existent";
@@ -241,6 +252,7 @@ int main(int argc, char **argv)
 
 	CU_add_test(suite, "invalid module argument", invalid_module_argument);
 	CU_add_test(suite, "no config file", no_config_file);
+	CU_add_test(suite, "no PAM_USER", no_valid_user);
 	CU_add_test(suite, "config not at start of line",
 	            config_not_at_start_of_line);
 	CU_add_test(suite, "config file has only comments and whitespace",
