@@ -91,7 +91,7 @@ static void no_config_file(void)
 	const char *arg = "path=data/non-existent";
 
 	memset(&pamh, '\0', sizeof(pam_handle_t));
-	pamh.username = strdup("ted");
+	pamh.username = "ted";
 
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_IGNORE);
 	CU_ASSERT(pamh.get_item_calls == 1);
