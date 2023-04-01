@@ -192,6 +192,21 @@ static void match_last_entry(void)
 }
 
 
+static void limit_with_spaces(void)
+{
+	const char *arg = "path=data/limit_with_spaces";
+
+	memset(&pamh, '\0', sizeof(pam_handle_t));
+	pamh.username = "ted";
+
+	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 1);
+	CU_ASSERT(pamh.syslog_calls == 1);
+	CU_ASSERT(!strcmp(pamh.limit, "5h 12m"));
+}
+
+
 int main(int argc, char **argv)
 {
 	void *handle;
@@ -238,6 +253,8 @@ int main(int argc, char **argv)
 	            config_comment_after_entry);
 	CU_add_test(suite, "limit set to last matching user entry",
 	            match_last_entry);
+	CU_add_test(suite, "limit can have spaces",
+	            limit_with_spaces);
 
 	CU_basic_set_mode(CU_BRM_VERBOSE);
 
