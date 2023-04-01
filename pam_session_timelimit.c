@@ -28,6 +28,7 @@
 #include <security/pam_ext.h>
 
 #include "config.h"
+#include "time-util.h"
 
 #define UNUSED __attribute__((unused))
 
