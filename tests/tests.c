@@ -100,6 +100,20 @@ static void no_config_file(void)
 }
 
 
+static void config_not_at_start_of_line(void)
+{
+	const char *arg = "path=data/broken_whitespace";
+
+	memset(&pamh, '\0', sizeof(pam_handle_t));
+	pamh.username = "ted";
+
+	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 0);
+	CU_ASSERT(pamh.syslog_calls == 1);
+}
+
+
 int main(int argc, char **argv)
 {
 	void *handle;
@@ -134,6 +148,8 @@ int main(int argc, char **argv)
 
 	CU_add_test(suite, "invalid module argument", invalid_module_argument);
 	CU_add_test(suite, "no config file", no_config_file);
+	CU_add_test(suite, "config not at start of line",
+	            config_not_at_start_of_line);
 
 	CU_basic_set_mode(CU_BRM_VERBOSE);
 
