@@ -28,6 +28,7 @@
 
 typedef struct pam_handle {
 	char *username;
+	char *limit;
 	unsigned int get_item_calls;
 	unsigned int set_data_calls;
 	unsigned int syslog_calls;
@@ -46,7 +47,12 @@ int pam_set_data(pam_handle_t *pamh, const char *module_data_name,
                  void (*cleanup)(pam_handle_t *pamh, void *data, int error_status))
 {
 	pamh->set_data_calls++;
-	return PAM_SUCCESS;
+
+	if (!strcmp(module_data_name,"systemd.runtime_max_sec")) {
+		pamh->limit = data;
+		return PAM_SUCCESS;
+	}
+	return PAM_BAD_ITEM;
 }
 
 
@@ -156,6 +162,21 @@ static void config_commented_limit(void)
 }
 
 
+static void config_comment_after_entry(void)
+{
+	const char *arg = "path=data/comment_after_entry";
+
+	memset(&pamh, '\0', sizeof(pam_handle_t));
+	pamh.username = "ted";
+
+	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 1);
+	CU_ASSERT(pamh.syslog_calls == 1);
+	CU_ASSERT(!strcmp(pamh.limit, "5h"));
+}
+
+
 int main(int argc, char **argv)
 {
 	void *handle;
@@ -198,6 +219,8 @@ int main(int argc, char **argv)
 	            config_missing_limit);
 	CU_add_test(suite, "config file with commented-out limit",
 	            config_commented_limit);
+	CU_add_test(suite, "config file with in-line comment after entry",
+	            config_comment_after_entry);
 
 	CU_basic_set_mode(CU_BRM_VERBOSE);
 
