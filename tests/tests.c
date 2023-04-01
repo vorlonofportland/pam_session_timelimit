@@ -177,6 +177,21 @@ static void config_comment_after_entry(void)
 }
 
 
+static void match_last_entry(void)
+{
+	const char *arg = "path=data/match_last_entry";
+
+	memset(&pamh, '\0', sizeof(pam_handle_t));
+	pamh.username = "ted";
+
+	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 1);
+	CU_ASSERT(pamh.syslog_calls == 3);
+	CU_ASSERT(!strcmp(pamh.limit, "12h"));
+}
+
+
 int main(int argc, char **argv)
 {
 	void *handle;
@@ -221,6 +236,8 @@ int main(int argc, char **argv)
 	            config_commented_limit);
 	CU_add_test(suite, "config file with in-line comment after entry",
 	            config_comment_after_entry);
+	CU_add_test(suite, "limit set to last matching user entry",
+	            match_last_entry);
 
 	CU_basic_set_mode(CU_BRM_VERBOSE);
 
