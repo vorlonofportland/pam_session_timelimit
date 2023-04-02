@@ -177,10 +177,10 @@ static void config_comment_after_entry(void)
 	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
-	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
-	CU_ASSERT(!strcmp(pamh.limit, "5h"));
+	CU_ASSERT(!strncmp(pamh.limit, "5h", 3));
 }
 
 
@@ -191,7 +191,7 @@ static void match_last_entry(void)
 	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
-	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(pamh.syslog_calls == 3);
@@ -206,7 +206,7 @@ static void limit_with_spaces(void)
 	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
-	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h 12m"));
