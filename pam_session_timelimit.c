@@ -33,6 +33,7 @@
 #define UNUSED __attribute__((unused))
 
 #define DEFAULT_CONFIG_PATH CONFIGDIR "/time_limits.conf"
+#define DEFAULT_STATE_PATH LOCALSTATEDIR "/lib/session_times"
 
 
 static void cleanup(pam_handle_t *handle UNUSED, void *data, int err UNUSED)
@@ -178,16 +179,20 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
                                 int flags,
                                 int argc, const char **argv)
 {
-	const char *runtime_max_sec = NULL, *path = NULL, *username = NULL;
+	const char *runtime_max_sec = NULL, *path = NULL, *statepath = NULL,
+	           *username = NULL;
 	const char **user_table;
 	unsigned int i;
 	int retval;
 	usec_t timeval = 0;
 
 	for (; argc-- > 0; ++argv) {
-		if (strncmp(*argv, "path=", strlen("path=")) == 0) {
+		if (strncmp(*argv, "path=", strlen("path=")) == 0)
 			path = strdup(*argv + strlen("path="));
-		} else {
+		else if (strncmp(*argv, "statepath=", strlen("statepath="))
+		           == 0)
+			statepath = strdup(*argv + strlen("statepath="));
+		else {
 			pam_syslog(handle, LOG_ERR,
 			           "Unknown module argument: %s", *argv);
 			return PAM_PERM_DENIED;
@@ -196,6 +201,8 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 
 	if (!path)
 		path = strdup(DEFAULT_CONFIG_PATH);
+	if (!statepath)
+		statepath = strdup(DEFAULT_STATE_PATH);
 
 	retval = pam_get_item(handle, PAM_USER, (const void **)&username);
 

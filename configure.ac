@@ -47,6 +47,8 @@ AC_SUBST(configdir)
 
 AC_DEFINE_UNQUOTED(CONFIGDIR, "$configdir",
                    [Define to the directory used for the config file])
+AC_DEFINE_UNQUOTED(LOCALSTATEDIR, "$localstatedir",
+                   [Define to the directory used for the config file])
 
 AC_CONFIG_FILES([Makefile tests/Makefile doc/Makefile])
 
