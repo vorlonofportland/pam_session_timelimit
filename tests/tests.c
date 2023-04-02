@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +76,15 @@ int pam_get_item(const pam_handle_t *pamh, int item_type,
 void pam_syslog(pam_handle_t *pamh, int priority,
                 const char *fmt, ...)
 {
+/*
+	va_list argp;
+
+	va_start(argp, fmt);
+	vprintf(fmt, argp);
+	va_end(argp);
+*/
+	printf("\n");
+
 	pamh->syslog_calls++;
 }
 
