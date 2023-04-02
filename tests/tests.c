@@ -172,12 +172,16 @@ static void config_commented_limit(void)
 
 static void config_comment_after_entry(void)
 {
-	const char *arg = "path=data/comment_after_entry";
+	const char *args[] = {
+		"path=data/comment_after_entry",
+		"statepath=data/state"
+	};
+	/* FIXME: need handler to delete state path between tests */
 
 	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
-	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strncmp(pamh.limit, "5h", 3));
@@ -186,12 +190,16 @@ static void config_comment_after_entry(void)
 
 static void match_last_entry(void)
 {
-	const char *arg = "path=data/match_last_entry";
+	const char *args[] = {
+		"path=data/match_last_entry",
+		"statepath=data/state"
+	};
+	/* FIXME: need handler to delete state path between tests */
 
 	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
-	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(pamh.syslog_calls == 3);
@@ -201,12 +209,16 @@ static void match_last_entry(void)
 
 static void limit_with_spaces(void)
 {
-	const char *arg = "path=data/limit_with_spaces";
+	const char *args[] = {
+		"path=data/limit_with_spaces",
+		"statepath=data/state"
+	};
+	/* FIXME: need handler to delete state path between tests */
 
 	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
-	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h 12m"));
