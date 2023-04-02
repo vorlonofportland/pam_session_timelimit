@@ -213,6 +213,19 @@ static void limit_with_spaces(void)
 }
 
 
+static void invalid_time_spec(void)
+{
+	const char *arg = "path=data/invalid_time_spec";
+
+	memset(&pamh, '\0', sizeof(pam_handle_t));
+	pamh.username = "ted";
+
+	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 0);
+}
+
+
 int main(int argc, char **argv)
 {
 	void *handle;
@@ -262,6 +275,8 @@ int main(int argc, char **argv)
 	            match_last_entry);
 	CU_add_test(suite, "limit can have spaces",
 	            limit_with_spaces);
+	CU_add_test(suite, "invalid time specification",
+	            invalid_time_spec);
 
 	CU_basic_set_mode(CU_BRM_VERBOSE);
 

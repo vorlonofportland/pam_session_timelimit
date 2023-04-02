@@ -182,6 +182,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	const char **user_table;
 	unsigned int i;
 	int retval;
+	usec_t timeval = 0;
 
 	for (; argc-- > 0; ++argv) {
 		if (strncmp(*argv, "path=", strlen("path=")) == 0) {
@@ -230,6 +231,13 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 
 	if (!runtime_max_sec)
 		return PAM_IGNORE;
+
+	retval = parse_time(runtime_max_sec, &timeval, USEC_PER_SEC);
+	if (retval) {
+		pam_syslog(handle, LOG_ERR,
+		           "Invalid time limit '%s'", runtime_max_sec);
+		return PAM_PERM_DENIED;
+	}
 
         retval = pam_set_data(handle, "systemd.runtime_max_sec",
 	                      (void *)runtime_max_sec, cleanup);
