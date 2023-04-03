@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <dlfcn.h>
 
@@ -97,7 +98,7 @@ static void setup_pam_state(void) {
 
 
 static void cleanup_pam_state(void) {
-	/* FIXME: need handler to delete state path between tests */
+	unlink("data/state");
 }
 
 
