@@ -202,10 +202,10 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 
 	for (; argc-- > 0; ++argv) {
 		if (strncmp(*argv, "path=", strlen("path=")) == 0)
-			path = strdup(*argv + strlen("path="));
+			path = *argv + strlen("path=");
 		else if (strncmp(*argv, "statepath=", strlen("statepath="))
 		           == 0)
-			statepath = strdup(*argv + strlen("statepath="));
+			statepath = *argv + strlen("statepath=");
 		else {
 			pam_syslog(handle, LOG_ERR,
 			           "Unknown module argument: %s", *argv);
@@ -214,9 +214,9 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	}
 
 	if (!path)
-		path = strdup(DEFAULT_CONFIG_PATH);
+		path = DEFAULT_CONFIG_PATH;
 	if (!statepath)
-		statepath = strdup(DEFAULT_STATE_PATH);
+		statepath = DEFAULT_STATE_PATH;
 
 	retval = pam_get_item(handle, PAM_USER, (const void **)&username);
 
