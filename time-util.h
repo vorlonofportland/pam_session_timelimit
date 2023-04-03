@@ -18,3 +18,5 @@ typedef uint64_t usec_t;
 #define USEC_PER_YEAR ((usec_t) (31557600ULL*USEC_PER_SEC))
 
 int parse_time(const char *t, usec_t *ret, usec_t default_unit);
+char* format_timespan(char *buf, size_t l, usec_t t, usec_t accuracy)
+	__attribute__((__warn_unused_result__));
