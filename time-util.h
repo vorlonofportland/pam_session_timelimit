@@ -2,6 +2,9 @@
 
 typedef uint64_t usec_t;
 
+#define PRI_USEC PRIu64
+#define USEC_FMT "%" PRI_USEC
+
 #define USEC_INFINITY ((usec_t) UINT64_MAX)
 
 #define USEC_PER_SEC  ((usec_t) 1000000ULL)
