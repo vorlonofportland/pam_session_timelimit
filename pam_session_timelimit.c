@@ -101,7 +101,12 @@ static int parse_config_line(char *line, char **user, char **limit)
 		return PAM_SYSTEM_ERR;
 
 	*user = malloc(i+1);
+	if (!*user)
+		return PAM_BUF_ERR;
+
 	if (!strncpy(*user, line, i)) {
+		free(*user);
+		*user = NULL;
 		return PAM_BUF_ERR;
 	}
 	(*user)[i] = '\0';
