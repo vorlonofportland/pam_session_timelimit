@@ -85,8 +85,8 @@ void pam_syslog(pam_handle_t *pamh, int priority,
 	va_start(argp, fmt);
 	vprintf(fmt, argp);
 	va_end(argp);
-*/
 	printf("\n");
+*/
 
 	pamh->syslog_calls++;
 }
