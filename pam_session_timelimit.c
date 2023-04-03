@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "config.h"
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -27,7 +29,6 @@
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 
-#include "config.h"
 #include "time-util.h"
 
 #define UNUSED __attribute__((unused))

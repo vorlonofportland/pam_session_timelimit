@@ -29,6 +29,12 @@ LT_INIT([disable-static])
 AC_ENABLE_STATIC([no])
 AC_ENABLE_SHARED([yes])
 
+AC_SYS_LARGEFILE
+if [ "$ac_cv_sys_file_offset_bits" = yes ]; then
+    AC_DEFINE([_TIME_BITS], [64],
+              [Number of bits in a timestamp, on hosts where this is settable.])
+fi
+
 AC_ARG_WITH(
         [pam-dir],
         AS_HELP_STRING([--with-pam-dir],
