@@ -89,11 +89,19 @@ void pam_syslog(pam_handle_t *pamh, int priority,
 }
 
 
+static void setup_pam_state(void) {
+	memset(&pamh, '\0', sizeof(pam_handle_t));
+}
+
+
+static void cleanup_pam_state(void) {
+	/* FIXME: need handler to delete state path between tests */
+}
+
+
 static void invalid_module_argument(void)
 {
 	const char *arg = "something_broken";
-
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 
 	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
 	CU_ASSERT(pamh.get_item_calls == 0);
@@ -104,8 +112,6 @@ static void invalid_module_argument(void)
 
 static void no_valid_user(void)
 {
-	memset(&pamh, '\0', sizeof(pam_handle_t));
-
 	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 0, NULL) == PAM_BAD_ITEM);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 0);
@@ -116,7 +122,6 @@ static void no_config_file(void)
 {
 	const char *arg = "path=data/non-existent";
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_IGNORE);
@@ -130,7 +135,6 @@ static void config_not_at_start_of_line(void)
 {
 	const char *arg = "path=data/broken_whitespace";
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
@@ -144,7 +148,6 @@ static void config_only_comments(void)
 {
 	const char *arg = "path=data/only_comments";
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_IGNORE);
@@ -157,7 +160,6 @@ static void config_missing_limit(void)
 {
 	const char *arg = "path=data/missing_limit";
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
@@ -171,7 +173,6 @@ static void config_commented_limit(void)
 {
 	const char *arg = "path=data/commented_limit";
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
@@ -186,9 +187,7 @@ static void config_comment_after_entry(void)
 		"path=data/comment_after_entry",
 		"statepath=data/state"
 	};
-	/* FIXME: need handler to delete state path between tests */
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
@@ -204,9 +203,7 @@ static void match_last_entry(void)
 		"path=data/match_last_entry",
 		"statepath=data/state"
 	};
-	/* FIXME: need handler to delete state path between tests */
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
@@ -223,9 +220,7 @@ static void limit_with_spaces(void)
 		"path=data/limit_with_spaces",
 		"statepath=data/state"
 	};
-	/* FIXME: need handler to delete state path between tests */
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
@@ -239,7 +234,6 @@ static void invalid_time_spec(void)
 {
 	const char *arg = "path=data/invalid_time_spec";
 
-	memset(&pamh, '\0', sizeof(pam_handle_t));
 	pamh.username = "ted";
 
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
@@ -251,8 +245,31 @@ static void invalid_time_spec(void)
 int main(int argc, char **argv)
 {
 	void *handle;
-	CU_pSuite suite = NULL;
 	unsigned int failures;
+	CU_ErrorCode retval;
+	CU_TestInfo tests[] = {
+		{ "invalid module argument", invalid_module_argument },
+		{ "no config file", no_config_file },
+		{ "no PAM_USER", no_valid_user },
+		{ "config not at start of line", config_not_at_start_of_line },
+		{ "config file has only comments and whitespace",
+		  config_only_comments },
+		{ "config file with missing limit", config_missing_limit },
+		{ "config file with commented-out limit",
+		  config_commented_limit },
+		{ "config file with in-line comment after entry",
+		  config_comment_after_entry },
+		{ "limit set to last matching user entry",
+		  match_last_entry },
+		{ "limit can have spaces", limit_with_spaces },
+		{ "invalid time specification", invalid_time_spec },
+		CU_TEST_INFO_NULL,
+	};
+	CU_SuiteInfo suites[] = {
+		{ "pam", NULL, NULL, setup_pam_state, cleanup_pam_state,
+		  tests },
+		CU_SUITE_INFO_NULL,
+	};
 
 	/* Make sure we can open our DSO before bothering to set up CUnit */
 	handle = dlopen("../.libs/pam_session_timelimit.so", RTLD_NOW);
@@ -274,31 +291,11 @@ int main(int argc, char **argv)
         if (CUE_SUCCESS != CU_initialize_registry())
                 return CU_get_error();
 
-	suite = CU_add_suite("pam", NULL, NULL);
-	if (!suite) {
+	retval = CU_register_suites(suites);
+	if (retval != CUE_SUCCESS) {
 		CU_cleanup_registry();
-		return CU_get_error();
+		return retval;
 	}
-
-	CU_add_test(suite, "invalid module argument", invalid_module_argument);
-	CU_add_test(suite, "no config file", no_config_file);
-	CU_add_test(suite, "no PAM_USER", no_valid_user);
-	CU_add_test(suite, "config not at start of line",
-	            config_not_at_start_of_line);
-	CU_add_test(suite, "config file has only comments and whitespace",
-	            config_only_comments);
-	CU_add_test(suite, "config file with missing limit",
-	            config_missing_limit);
-	CU_add_test(suite, "config file with commented-out limit",
-	            config_commented_limit);
-	CU_add_test(suite, "config file with in-line comment after entry",
-	            config_comment_after_entry);
-	CU_add_test(suite, "limit set to last matching user entry",
-	            match_last_entry);
-	CU_add_test(suite, "limit can have spaces",
-	            limit_with_spaces);
-	CU_add_test(suite, "invalid time specification",
-	            invalid_time_spec);
 
 	CU_basic_set_mode(CU_BRM_VERBOSE);
 
