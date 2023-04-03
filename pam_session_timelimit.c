@@ -45,6 +45,19 @@ static void cleanup(pam_handle_t *handle UNUSED, void *data, int err UNUSED)
 }
 
 
+static void free_config_file(char **user_table)
+{
+	int i;
+
+	for (i = 0; user_table[i]; i += 2)
+	{
+		free(user_table[i]);
+		free(user_table[i+1]);
+	}
+	free(user_table);
+}
+
+
 static int parse_config_line(char *line, char **user, char **limit)
 {
 	size_t length;
@@ -112,7 +125,7 @@ static int parse_config_line(char *line, char **user, char **limit)
 
 
 static int parse_config_file(pam_handle_t *handle, const char *path,
-                             const char ***user_table)
+                             char ***user_table)
 {
 	FILE *config_file;
 	struct stat statbuf;
@@ -159,7 +172,7 @@ static int parse_config_file(pam_handle_t *handle, const char *path,
 		if (!newresults) {
 			free(user);
 			free(limit);
-			free(results);
+			free_config_file(results);
 			return PAM_BUF_ERR;
 		}
 		results = newresults;
@@ -171,7 +184,7 @@ static int parse_config_file(pam_handle_t *handle, const char *path,
 		free(results);
 		return PAM_IGNORE;
 	}
-	*user_table = (const char **)results;
+	*user_table = results;
 	return PAM_SUCCESS;
 }
 
@@ -182,7 +195,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 {
 	const char *runtime_max_sec = NULL, *path = NULL, *statepath = NULL,
 	           *username = NULL;
-	const char **user_table;
+	char **user_table;
 	unsigned int i;
 	int retval;
 	usec_t timeval = 0;
@@ -222,7 +235,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	{
 		if (!strcmp(user_table[i], username))
 		{
-			runtime_max_sec = user_table[i+1];
+			runtime_max_sec = strdup(user_table[i+1]);
 			pam_syslog(handle, LOG_INFO,
 			           "Limiting user login time for '%s' to '%s'",
 			           username, runtime_max_sec);
@@ -237,20 +250,27 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	   just logging in again.
 	 */
 
-	if (!runtime_max_sec)
+	if (!runtime_max_sec) {
+		free_config_file(user_table);
 		return PAM_IGNORE;
+	}
 
 	retval = parse_time(runtime_max_sec, &timeval, USEC_PER_SEC);
 	if (retval) {
 		pam_syslog(handle, LOG_ERR,
 		           "Invalid time limit '%s'", runtime_max_sec);
+		free((void *)runtime_max_sec);
+		free_config_file(user_table);
 		return PAM_PERM_DENIED;
 	}
 
         retval = pam_set_data(handle, "systemd.runtime_max_sec",
 	                      (void *)runtime_max_sec, cleanup);
-	if (retval != PAM_SUCCESS)
+	if (retval != PAM_SUCCESS) {
+		free((void *)runtime_max_sec);
+		free_config_file(user_table);
 		return PAM_PERM_DENIED;
+	}
 
 	return PAM_SUCCESS;
 }
