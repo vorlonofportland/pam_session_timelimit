@@ -1,5 +1,5 @@
 pam-session-timelimit (0.5-1) UNRELEASED; urgency=medium
 
-  * Initial release.
+  * Initial release.  Closes: #1034266.
 
  -- Steve Langasek <vorlon@debian.org>  Thu, 30 Mar 2023 22:43:42 +0000
