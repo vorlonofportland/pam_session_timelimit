@@ -446,17 +446,18 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	}
 
 	retval = parse_time(runtime_max_sec, &timeval, USEC_PER_SEC);
+
+	free_config_file(user_table);
+
 	if (retval) {
 		pam_syslog(handle, LOG_ERR,
 		           "Invalid time limit '%s'", runtime_max_sec);
-		free_config_file(user_table);
 		return PAM_PERM_DENIED;
 	}
 
 	retval = get_used_time_for_user(handle, statepath, username,
 	                                &used_time);
 	if (retval != PAM_SUCCESS) {
-		free_config_file(user_table);
 		return PAM_PERM_DENIED;
 	}
 
@@ -466,7 +467,6 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	if (!format_timespan(runtime_max_sec, FORMAT_TIMESPAN_MAX, timeval,
 	                     USEC_PER_SEC)) {
 		free((void *)runtime_max_sec);
-		free_config_file(user_table);
 		return PAM_PERM_DENIED;
 	}
 
@@ -477,7 +477,5 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 		retval = PAM_PERM_DENIED;
 	}
 
-	free_config_file(user_table);
-
-	return PAM_SUCCESS;
+	return retval;
 }
