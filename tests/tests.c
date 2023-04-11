@@ -240,6 +240,7 @@ static void config_comment_after_entry(void)
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strncmp(pamh.limit, "5h", 3));
+	free(pamh.limit);
 }
 
 
@@ -257,6 +258,7 @@ static void match_last_entry(void)
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(pamh.syslog_calls == 3);
 	CU_ASSERT(!strcmp(pamh.limit, "12h"));
+	free(pamh.limit);
 }
 
 
@@ -273,6 +275,7 @@ static void limit_with_spaces(void)
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
+	free(pamh.limit);
 }
 
 
@@ -305,6 +308,7 @@ static void state_file_exists_no_match(void)
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
+	free(pamh.limit);
 }
 
 
@@ -326,6 +330,7 @@ static void state_file_exists_with_match(void)
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "12min"));
+	free(pamh.limit);
 }
 
 
@@ -347,6 +352,7 @@ static void state_file_ignore_stale_entry(void)
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
+	free(pamh.limit);
 }
 
 
@@ -370,6 +376,7 @@ static void state_file_no_crash_on_truncation(void)
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
+	free(pamh.limit);
 }
 
 
@@ -394,6 +401,7 @@ static void state_file_no_crash_on_missing_NUL(void)
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
 	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
+	free(pamh.limit);
 }
 
 
