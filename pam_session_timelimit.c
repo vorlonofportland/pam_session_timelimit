@@ -61,7 +61,7 @@ static void free_config_file(char **user_table)
 static int parse_config_line(char *line, char **user, char **limit)
 {
 	size_t length;
-	int ret, i;
+	int i;
 	char *comment;
 
 	*user = NULL;
