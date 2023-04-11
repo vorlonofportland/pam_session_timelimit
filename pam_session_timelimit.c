@@ -20,11 +20,16 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
+#include <sys/file.h>
 #include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
 
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
@@ -42,6 +47,157 @@ static void cleanup(pam_handle_t *handle UNUSED, void *data, int err UNUSED)
 	if (!data)
 		return;
 	free(data);
+}
+
+
+/* returns fd, or -1 on failure */
+static int open_state_path (const pam_handle_t *handle, const char *statepath)
+{
+	int fd, retval;
+	ssize_t bytes;
+	char buf[12];
+
+	if (geteuid() == 0) {
+		/* must set the real uid to 0 so the helper will not error
+		   out if pam is called from setuid binary (su, sudo...) */
+		if (setuid(0) == -1) {
+			pam_syslog(handle, LOG_ERR,
+			           "Could not gain root privilege: %s",
+			           strerror(errno));
+			return -1;
+		}
+	}
+
+	fd = open(statepath, O_RDWR);
+
+	if (fd < 0 && errno == ENOENT) {
+		fd = open(statepath, O_RDWR|O_CREAT, 0600);
+		if (fd < 0) {
+			pam_syslog(handle, LOG_ERR,
+			           "Could not create statefile: %s",
+			           strerror(errno));
+			return -1;
+		}
+
+		retval = flock(fd, LOCK_EX);
+		if (retval < 0) {
+			pam_syslog(handle, LOG_ERR,
+			           "Could not lock statefile: %s",
+			           strerror(errno));
+			close(fd);
+			return -1;
+		}
+
+		strncpy(buf, "Format: ", 9);
+		/* This file format is not portable between systems of
+		   different endianness */
+		*((uint32_t *)(buf+8)) = 1;
+		bytes = write(fd, buf, 12);
+		if (bytes != 12) {
+			pam_syslog(handle, LOG_ERR,
+			           "Could not initialize statefile: %s",
+			           strerror(errno));
+			close(fd);
+			return -1;
+		}
+		return fd;
+	}
+	if (fd < 0) {
+		pam_syslog(handle, LOG_ERR, "Could not open statefile: %s",
+		           strerror(errno));
+		return -1;
+	}
+
+	retval = flock(fd, LOCK_EX);
+	if (retval < 0) {
+		pam_syslog(handle, LOG_ERR,
+		           "Could not lock statefile: %s",
+		           strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	bytes = read(fd, buf, 12);
+
+	if (bytes != 12) {
+		pam_syslog(handle, LOG_ERR, "Could not read from statefile: %s",
+		           strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	if (strncmp(buf, "Format: ", 8) != 0
+	    || *((uint32_t *)(buf+8)) != 1)
+	{
+		pam_syslog(handle, LOG_ERR, "Unknown statefile format");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+
+static time_t time_today(void) {
+	struct tm current_tm;
+	time_t current_time = time(NULL);
+
+	if (localtime_r(&current_time, &current_tm) == NULL) {
+		return -1;
+	}
+	// get the time at 00:00:00 today
+	current_tm.tm_sec = current_tm.tm_min = current_tm.tm_hour = 0;
+	// we query the local time, but we write in GMT so that the session
+	// limits don't get reset if the system timezone changes
+	return timegm(&current_tm);
+}
+
+
+static int get_used_time_for_user(const pam_handle_t *handle,
+                                  const char *statepath,
+                                  const char *username,
+                                  usec_t *used_time)
+{
+	char buf[NAME_MAX+1 + sizeof(time_t) + sizeof(usec_t)];
+	ssize_t read_bytes, buf_bytes = 0;
+	int retval = PAM_SUCCESS;
+	int state_file = open_state_path(handle, statepath);
+
+	*used_time = 0;
+
+	if (state_file < 0)
+		return PAM_SYSTEM_ERR;
+
+	do {
+		if (buf_bytes == sizeof(buf)) {
+			// found the record for this user
+			if (!strncmp(username, buf, NAME_MAX+1)) {
+				time_t last_seen;
+				memcpy(&last_seen, buf + NAME_MAX+1,
+				       sizeof(time_t));
+				/* record is for a different day, so doesn't
+				   count against us */
+				if (last_seen < time_today())
+					break;
+				memcpy(used_time,
+				       buf + NAME_MAX+1 + sizeof(time_t),
+				       sizeof(usec_t));
+				break;
+			}
+			buf_bytes = 0;
+		}
+		read_bytes = read(state_file, buf, sizeof(buf) - buf_bytes);
+		if (read_bytes < 0) {
+			if (errno == EINTR)
+				continue;
+			retval = PAM_SYSTEM_ERR;
+		}
+		buf_bytes += read_bytes;
+	} while (read_bytes != 0);
+
+	close(state_file);
+
+	return retval;
 }
 
 
@@ -198,12 +354,12 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
                                 int flags,
                                 int argc, const char **argv)
 {
-	const char *runtime_max_sec = NULL, *path = NULL, *statepath = NULL,
-	           *username = NULL;
+	const char *path = NULL, *statepath = NULL, *username = NULL;
+	char *runtime_max_sec = NULL;
 	char **user_table;
 	unsigned int i;
 	int retval;
-	usec_t timeval = 0;
+	usec_t timeval = 0, used_time = 0;
 
 	for (; argc-- > 0; ++argv) {
 		if (strncmp(*argv, "path=", strlen("path=")) == 0)
@@ -240,20 +396,12 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	{
 		if (!strcmp(user_table[i], username))
 		{
-			runtime_max_sec = strdup(user_table[i+1]);
+			runtime_max_sec = user_table[i+1];
 			pam_syslog(handle, LOG_INFO,
 			           "Limiting user login time for '%s' to '%s'",
 			           username, runtime_max_sec);
 		}
 	}
-
-	/* FIXME: as annoying as it will be to reimplement systemd's time
-	   parsing here, we want the limit to apply to all sessions in the
-	   day, so need some way to catch the total session time at the end,
-	   save that in a state file, and subtract any used session time from
-	   the total limit so that the user can't get around the limit by
-	   just logging in again.
-	 */
 
 	if (!runtime_max_sec) {
 		free_config_file(user_table);
@@ -264,6 +412,20 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	if (retval) {
 		pam_syslog(handle, LOG_ERR,
 		           "Invalid time limit '%s'", runtime_max_sec);
+		free_config_file(user_table);
+		return PAM_PERM_DENIED;
+	}
+
+	retval = get_used_time_for_user(handle, statepath, username,
+	                                &used_time);
+	if (retval != PAM_SUCCESS)
+		return PAM_PERM_DENIED;
+
+	timeval -= used_time;
+
+	runtime_max_sec = malloc(FORMAT_TIMESPAN_MAX);
+	if (!format_timespan(runtime_max_sec, FORMAT_TIMESPAN_MAX, timeval,
+	                     USEC_PER_SEC)) {
 		free((void *)runtime_max_sec);
 		free_config_file(user_table);
 		return PAM_PERM_DENIED;

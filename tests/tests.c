@@ -18,10 +18,13 @@
 
 #include "config.h"
 
+#include <fcntl.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <dlfcn.h>
@@ -29,6 +32,8 @@
 #include <security/_pam_types.h>
 
 #include <CUnit/Basic.h>
+
+#include "time-util.h"
 
 typedef struct pam_handle {
 	char *username;
@@ -99,6 +104,44 @@ static void setup_pam_state(void) {
 
 static void cleanup_pam_state(void) {
 	unlink("data/state");
+}
+
+
+static int initialize_state_file(char *username, time_t base_time,
+                                 usec_t timeval)
+{
+	char buf[1024];
+	ssize_t bytes;
+	int fd;
+
+	fd = open("data/state", O_RDWR | O_CREAT, 0600);
+	if (fd < 0)
+		return -1;
+
+	strncpy(buf, "Format: ", 9);
+
+	*((uint32_t *)(buf+8)) = 1;
+	bytes = write(fd, buf, 12);
+	if (bytes != 12) {
+		close(fd);
+		unlink("data/state");
+		return -1;
+	}
+
+	memset(buf, '\0', NAME_MAX+1+sizeof(time_t)+sizeof(usec_t));
+
+	strncpy(buf, username, NAME_MAX+1);
+	*((time_t *)(buf+NAME_MAX+1)) = base_time;
+	*((usec_t *)(buf+NAME_MAX+1+sizeof(time_t))) = timeval;
+	bytes = write(fd, buf, NAME_MAX+1+sizeof(time_t)+sizeof(usec_t));
+	close(fd);
+
+	if (bytes != NAME_MAX+1+sizeof(time_t)+sizeof(usec_t)) {
+		unlink("data/state");
+		return -1;
+	}
+
+	return 0;
 }
 
 
@@ -229,7 +272,7 @@ static void limit_with_spaces(void)
 	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 1);
-	CU_ASSERT(!strcmp(pamh.limit, "5h 12m"));
+	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
 }
 
 
@@ -242,6 +285,115 @@ static void invalid_time_spec(void)
 	CU_ASSERT(acct_mgmt(&pamh, 0, 1, &arg) == PAM_PERM_DENIED);
 	CU_ASSERT(pamh.get_item_calls == 1);
 	CU_ASSERT(pamh.set_data_calls == 0);
+}
+
+
+static void state_file_exists_no_match(void)
+{
+	int retval;
+	const char *args[] = {
+		"path=data/limit_with_spaces",
+		"statepath=data/state"
+	};
+
+	pamh.username = "ted";
+
+	retval = initialize_state_file("bob", time(NULL), 5*USEC_PER_HOUR);
+	CU_ASSERT_FATAL(retval == 0);
+
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 1);
+	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
+}
+
+
+static void state_file_exists_with_match(void)
+{
+	int retval;
+	const char *args[] = {
+		"path=data/limit_with_spaces",
+		"statepath=data/state"
+	};
+
+	pamh.username = "ted";
+
+	retval = initialize_state_file(pamh.username, time(NULL),
+	                               5*USEC_PER_HOUR);
+	CU_ASSERT_FATAL(retval == 0);
+
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 1);
+	CU_ASSERT(!strcmp(pamh.limit, "12min"));
+}
+
+
+static void state_file_ignore_stale_entry(void)
+{
+	int retval;
+	const char *args[] = {
+		"path=data/limit_with_spaces",
+		"statepath=data/state"
+	};
+
+	pamh.username = "ted";
+
+	retval = initialize_state_file(pamh.username, 0,
+	                               5*USEC_PER_HOUR);
+	CU_ASSERT_FATAL(retval == 0);
+
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 1);
+	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
+}
+
+
+static void state_file_no_crash_on_truncation(void)
+{
+	int retval;
+	const char *args[] = {
+		"path=data/limit_with_spaces",
+		"statepath=data/state"
+	};
+
+	pamh.username = "ted";
+
+	retval = initialize_state_file(pamh.username, time(NULL),
+	                               5*USEC_PER_HOUR);
+	CU_ASSERT_FATAL(retval == 0);
+
+	CU_ASSERT_FATAL(truncate("data/state", 50) == 0);
+
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 1);
+	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
+}
+
+
+static void state_file_no_crash_on_missing_NUL(void)
+{
+	int retval;
+	const char *args[] = {
+		"path=data/limit_with_spaces",
+		"statepath=data/state"
+	};
+	char username[NAME_MAX+2];
+
+	pamh.username = "ted";
+
+	memset(username, 'A', NAME_MAX+1);
+	username[NAME_MAX+1] = '\0';
+
+	retval = initialize_state_file(username, time(NULL), 5*USEC_PER_HOUR);
+	CU_ASSERT_FATAL(retval == 0);
+
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_item_calls == 1);
+	CU_ASSERT(pamh.set_data_calls == 1);
+	CU_ASSERT(!strcmp(pamh.limit, "5h 12min"));
 }
 
 
@@ -266,6 +418,16 @@ int main(int argc, char **argv)
 		  match_last_entry },
 		{ "limit can have spaces", limit_with_spaces },
 		{ "invalid time specification", invalid_time_spec },
+		{ "state file exists with no matching entry",
+		  state_file_exists_no_match },
+		{ "state file exists with matching entry",
+		  state_file_exists_with_match },
+		{ "no crash on truncated state file",
+		  state_file_no_crash_on_truncation },
+		{ "no crash on username overflow in state file",
+		  state_file_no_crash_on_missing_NUL },
+		{ "ignore state file entries with stale timestamp",
+		  state_file_ignore_stale_entry },
 		CU_TEST_INFO_NULL,
 	};
 	CU_SuiteInfo suites[] = {
