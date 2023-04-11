@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -40,6 +41,7 @@ typedef struct pam_handle {
 	char *limit;
 	time_t *start_time;
 	unsigned int get_item_calls;
+	unsigned int get_data_calls;
 	unsigned int set_data_calls;
 	unsigned int syslog_calls;
 } pam_handle_t;
@@ -63,6 +65,22 @@ int pam_set_data(pam_handle_t *pamh, const char *module_data_name,
 		return PAM_SUCCESS;
 	} else if (!strcmp(module_data_name,"timelimit.session_start")) {
 		pamh->start_time = data;
+		return PAM_SUCCESS;
+	}
+	return PAM_BAD_ITEM;
+}
+
+
+int pam_get_data(pam_handle_t *pamh, const char *module_data_name,
+                 void **data)
+{
+	pamh->get_data_calls++;
+
+	if (!strcmp(module_data_name,"systemd.runtime_max_sec")) {
+		*data = pamh->limit;
+		return PAM_SUCCESS;
+	} else if (!strcmp(module_data_name,"timelimit.session_start")) {
+		*data = pamh->start_time;
 		return PAM_SUCCESS;
 	}
 	return PAM_BAD_ITEM;
@@ -414,6 +432,59 @@ static void open_session_sets_time() {
 }
 
 
+static void close_session_updates_state() {
+	const char *arg = "statepath=data/state";
+	struct stat statbuf;
+
+	pamh.username = "ted";
+
+	CU_ASSERT_FATAL(open_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.set_data_calls == 1);
+
+	// let's try to avoid a 0-length session, even though we're using
+	// microseconds...
+	sleep(5);
+
+	CU_ASSERT(pamh.start_time != NULL);
+	CU_ASSERT(*pamh.start_time <= time(NULL));
+	CU_ASSERT(*pamh.start_time >= time(NULL)-60);
+	CU_ASSERT(stat("data/state", &statbuf) == -1);
+
+	CU_ASSERT_FATAL(close_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_data_calls == 1);
+	CU_ASSERT(stat("data/state", &statbuf) == 0);
+}
+
+
+static void close_session_updates_existing_record() {
+	const char *arg = "statepath=data/state";
+	struct stat statbuf;
+	off_t filesize;
+	int retval;
+
+	pamh.username = "ted";
+
+	retval = initialize_state_file("ted", time(NULL), 5*USEC_PER_HOUR);
+	CU_ASSERT_FATAL(retval == 0);
+
+	CU_ASSERT(stat("data/state", &statbuf) == 0);
+	filesize = statbuf.st_size;
+
+	CU_ASSERT_FATAL(open_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.set_data_calls == 1);
+
+	// let's try to avoid a 0-length session, even though we're using
+	// microseconds...
+	sleep(5);
+
+	CU_ASSERT(pamh.start_time != NULL);
+	CU_ASSERT(*pamh.start_time <= time(NULL));
+	CU_ASSERT(*pamh.start_time >= time(NULL)-60);
+	CU_ASSERT(stat("data/state", &statbuf) == 0);
+	CU_ASSERT(statbuf.st_size == filesize);
+}
+
+
 int main(int argc, char **argv)
 {
 	void *handle;
@@ -447,6 +518,10 @@ int main(int argc, char **argv)
 		  state_file_ignore_stale_entry },
 		{ "open_session() sets time",
 		  open_session_sets_time },
+		{ "close_session() updates state",
+		  close_session_updates_state },
+		{ "close_session() updates existing record",
+		  close_session_updates_existing_record },
 		CU_TEST_INFO_NULL,
 	};
 	CU_SuiteInfo suites[] = {

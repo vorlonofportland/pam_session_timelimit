@@ -201,6 +201,59 @@ static int get_used_time_for_user(const pam_handle_t *handle,
 }
 
 
+static int set_used_time_for_user(const pam_handle_t *handle,
+                                  const char *statepath,
+                                  const char *username,
+                                  usec_t used_time)
+{
+	char buf[NAME_MAX+1 + sizeof(time_t) + sizeof(usec_t)];
+	ssize_t read_bytes, buf_bytes = 0;
+	int state_file = open_state_path(handle, statepath);
+
+	if (state_file < 0)
+		return PAM_SYSTEM_ERR;
+
+	do {
+		if (buf_bytes == sizeof(buf)) {
+			// found the record for this user
+			if (!strncmp(username, buf, NAME_MAX+1)) {
+				// found our record, so rewind to the start
+				lseek(state_file, -sizeof(buf), SEEK_CUR);
+				break;
+			}
+			buf_bytes = 0;
+		}
+		read_bytes = read(state_file, buf, sizeof(buf) - buf_bytes);
+		if (read_bytes < 0) {
+			if (errno == EINTR)
+				continue;
+			close(state_file);
+			return PAM_SYSTEM_ERR;
+		}
+		buf_bytes += read_bytes;
+	} while (read_bytes != 0);
+
+	memset(buf, '\0', sizeof(buf));
+
+	strncpy(buf, username, NAME_MAX+1);
+	*((time_t *)(buf + NAME_MAX + 1)) = time_today();
+	*((usec_t *)(buf + NAME_MAX + 1 + sizeof(time_t))) = used_time;
+
+	buf_bytes = write(state_file, buf, sizeof(buf));
+
+	close(state_file);
+
+	if (buf_bytes != sizeof(buf)) {
+		pam_syslog(handle, LOG_ERR,
+		           "Could not update statefile: %s",
+		           strerror(errno));
+		return PAM_SYSTEM_ERR;
+	}
+
+	return PAM_SUCCESS;
+}
+
+
 static void free_config_file(char **user_table)
 {
 	int i;
@@ -382,6 +435,62 @@ PAM_EXTERN int pam_sm_close_session(pam_handle_t *handle,
                                     int flags,
                                     int argc, const char **argv)
 {
+	int retval;
+	const char *statepath = NULL, *username = NULL;
+	usec_t elapsed_time, used_time = 0;
+	time_t *start_time, end_time = time(NULL);
+
+	for (; argc-- > 0; ++argv) {
+		if (strncmp(*argv, "statepath=", strlen("statepath="))
+		      == 0)
+			statepath = *argv + strlen("statepath=");
+		else {
+			pam_syslog(handle, LOG_ERR,
+			           "Unknown module argument: %s", *argv);
+			return PAM_SYSTEM_ERR;
+		}
+	}
+
+	if (!statepath)
+		statepath = DEFAULT_STATE_PATH;
+
+	retval = pam_get_data(handle, "timelimit.session_start",
+	                      (const void **)&start_time);
+
+	if (retval != PAM_SUCCESS) {
+		pam_syslog(handle, LOG_ERR, "start time missing from session");
+		return PAM_SESSION_ERR;
+	}
+
+	if (end_time < *start_time) {
+		pam_syslog(handle, LOG_ERR, "session start time in the future");
+		return PAM_SESSION_ERR;
+	}
+
+	elapsed_time = (end_time - *start_time) * USEC_PER_SEC;
+
+	retval = pam_get_item(handle, PAM_USER, (const void **)&username);
+	if (retval != PAM_SUCCESS)
+		return retval;
+	if (!username)
+		return PAM_SESSION_ERR;
+
+	retval = get_used_time_for_user(handle, statepath, username,
+	                                &used_time);
+	if (retval != PAM_SUCCESS) {
+		return PAM_SESSION_ERR;
+	}
+
+	if (USEC_INFINITY - used_time < elapsed_time)
+		elapsed_time = USEC_INFINITY;
+	else
+		elapsed_time += used_time;
+
+	retval = set_used_time_for_user(handle, statepath, username,
+	                                elapsed_time);
+
+	if (retval != PAM_SUCCESS)
+		return PAM_SESSION_ERR;
 
 	return PAM_SUCCESS;
 }
