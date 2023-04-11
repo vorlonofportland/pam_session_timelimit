@@ -4,3 +4,6 @@ Priority: 256
 Account-Type: Additional
 Account:
 	required			pam_session_timelimit.so
+Session-Type: Additional
+Session:
+	required			pam_session_timelimit.so
