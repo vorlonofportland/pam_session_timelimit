@@ -26,5 +26,7 @@ pamdir = @pamdir@
 
 pam_LTLIBRARIES = pam_session_timelimit.la
 
-pam_session_timelimit_la_SOURCES = pam_session_timelimit.c
+pam_session_timelimit_la_SOURCES = pam_session_timelimit.c \
+                                   time-util.c \
+                                   time-util.h
 pam_session_timelimit_la_LIBADD = -lpam
