@@ -51,6 +51,9 @@ AC_ARG_WITH(
 
 AC_SUBST(configdir)
 
+AC_PATH_PROG([XSLTPROC], [xsltproc])
+AC_PATH_PROG([XMLLINT], [xmllint],[/bin/true])
+
 AC_DEFINE_UNQUOTED(CONFIGDIR, "$configdir",
                    [Define to the directory used for the config file])
 AC_DEFINE_UNQUOTED(LOCALSTATEDIR, "$localstatedir",

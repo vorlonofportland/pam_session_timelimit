@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+        "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd">
+
+<refentry id="pam_session_timelimit">
+
+  <refmeta>
+    <refentrytitle>pam_session_timelimit</refentrytitle>
+    <manvolnum>8</manvolnum>
+    <refmiscinfo class="sectdesc">System Manager's Manual</refmiscinfo>
+  </refmeta>
+
+  <refnamediv id="pam_session_timelimit-name">
+    <refname>pam_session_timelimit</refname>
+    <refpurpose>Module to impose daily time limits on user sessions</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis id="pam_session_timelimit-cmdsynopsis">
+      <command>pam_session_timelimit.so</command>
+      <arg choice="opt">
+        ...
+      </arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1 id="pam_session_timelimit-description">
+    <title>DESCRIPTION</title>
+    <para>
+      The pam_session_timelimit PAM module interfaces with systemd to limit
+      the length of time that a user can use a service.  This is a per-day
+      time limit; each successive session counts against the limit and reduces
+      the time available on a given day for remaining sessions.
+    </para>
+    <para>
+      The time used by a session is only recorded at the session end.  It is
+      therefore possible to exceed the absolute limit by launching sessions
+      in parallel.
+    </para>
+    <para>
+      By default the settings for per-user session time limits are taken
+      from the config file <filename>/etc/security/time_limits.conf</filename>.
+      An alternate file can be specified with the <emphasis>path</emphasis>
+      option.
+    </para>
+    <para>
+      Time limits in this config file are expressed using the syntax described
+      in
+      <citerefentry>
+        <refentrytitle>systemd.time</refentrytitle><manvolnum>7</manvolnum>
+      </citerefentry>.
+    </para>
+    <para>
+      The config file format does not support configuring different time limits
+      for different services.  To achieve this, use different
+      <emphasis>path</emphasis> options for each service.
+    </para>
+  </refsect1>
+
+  <refsect1 id="pam_session_timelimit-options">
+    <title>OPTIONS</title>
+    <variablelist>
+
+      <varlistentry>
+        <term>
+          <option>path=/path/to/time_limits.conf</option>
+        </term>
+        <listitem>
+          <para>
+            Indicate an alternative configuration file following the
+            time_limits.conf format to override the default.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>statepath=/path/to/session_state</option>
+        </term>
+        <listitem>
+          <para>
+            Indicate an alternative state file where the module should record
+            each user's used session time for the day.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1 id="pam_session_timelimit-types">
+    <title>MODULE TYPES PROVIDED</title>
+    <para>
+      The <option>account</option> and <option>session</option> module types
+      are provided.
+    </para>
+  </refsect1>
+
+  <refsect1 id="pam_session_timelimit-return_values">
+    <title>RETURN VALUES</title>
+    <variablelist>
+      <varlistentry>
+        <term>PAM_SUCCESS</term>
+        <listitem>
+           <para>
+             Access was granted.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>PAM_PERM_DENIED</term>
+        <listitem>
+          <para>
+            The user is not allowed access at this time.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>PAM_BUF_ERR</term>
+        <listitem>
+          <para>
+            Memory buffer error.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>PAM_SYSTEM_ERR</term>
+        <listitem>
+          <para>
+            An unexpected error was encountered.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>PAM_SESSION_ERR</term>
+        <listitem>
+          <para>
+            The session was not opened correctly and therefore cannot be closed
+            correctly.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>PAM_BAD_ITEM</term>
+        <listitem>
+          <para>
+            The module could not identify the user to be given access.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>PAM_IGNORE</term>
+        <listitem>
+           <para>
+             No session limit has been configured for this user.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1 id="pam_session_timelimit-files">
+    <title>FILES</title>
+    <variablelist>
+      <varlistentry>
+        <term><filename>/etc/security/time_limits.conf</filename></term>
+        <listitem>
+          <para>Default configuration file</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><filename>/var/lib/session_times</filename></term>
+        <listitem>
+          <para>Default state file</para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1 id='pam_session_timelimit-examples'>
+    <title>EXAMPLES</title>
+      <programlisting>
+#%PAM-1.0
+#
+# apply pam_session_timelimit accounting to login requests
+#
+login  account  required  pam_session_timelimit.so
+login  session  required  pam_session_timelimit.so
+      </programlisting>
+  </refsect1>
+
+  <refsect1 id="pam_session_timelimit-see_also">
+    <title>SEE ALSO</title>
+    <para>
+      <citerefentry>
+        <refentrytitle>systemd.time</refentrytitle><manvolnum>7</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>pam.d</refentrytitle><manvolnum>5</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>pam</refentrytitle><manvolnum>7</manvolnum>
+      </citerefentry>.
+    </para>
+  </refsect1>
+
+  <refsect1 id="pam_session_timelimit-authors">
+    <title>AUTHOR</title>
+    <para>
+      pam_session_timelimit was written by Steve Langasek &lt;vorlon@dodds.net&gt;.
+    </para>
+  </refsect1>
+</refentry>
