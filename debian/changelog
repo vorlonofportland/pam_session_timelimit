@@ -2,6 +2,7 @@ pam-session-timelimit (0.6-1) UNRELEASED; urgency=medium
 
   * New upstream release.
   * Add build-dependencies needed for manpage generation.
+  * Install the manpage in the correct directory.
 
  -- Steve Langasek <vorlon@debian.org>  Tue, 11 Apr 2023 23:21:36 +0000
 
