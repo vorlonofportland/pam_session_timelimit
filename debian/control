@@ -17,5 +17,6 @@ Multi-Arch: same
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
+ libpam-systemd,
 Description: PAM module to permit configuring time limits for user sessions
  This module lets you pass session time limit information to pam_systemd.
