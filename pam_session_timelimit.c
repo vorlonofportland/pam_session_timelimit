@@ -439,6 +439,17 @@ PAM_EXTERN int pam_sm_close_session(pam_handle_t *handle,
 	const char *statepath = NULL, *username = NULL;
 	usec_t elapsed_time, used_time = 0;
 	time_t *start_time, end_time = time(NULL);
+	char *runtime_max_sec = NULL;
+
+	// if no time limit is set for us, then short-circuit to avoid
+	// creating an unnecessarily large state file
+        retval = pam_get_data(handle, "systemd.runtime_max_sec",
+	                      (const void **)&runtime_max_sec);
+	if (retval != PAM_SUCCESS || runtime_max_sec == NULL)
+		return PAM_SUCCESS;
+
+	retval = pam_get_data(handle, "timelimit.session_start",
+	                      (const void **)&start_time);
 
 	for (; argc-- > 0; ++argv) {
 		if (strncmp(*argv, "statepath=", strlen("statepath="))

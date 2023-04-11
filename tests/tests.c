@@ -434,12 +434,22 @@ static void open_session_sets_time() {
 
 static void close_session_updates_state() {
 	const char *arg = "statepath=data/state";
+	const char *args[] = {
+		"path=data/limit_with_spaces",
+		"statepath=data/state"
+	};
 	struct stat statbuf;
 
 	pamh.username = "ted";
 
-	CU_ASSERT_FATAL(open_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_SUCCESS);
 	CU_ASSERT(pamh.set_data_calls == 1);
+
+	// remove the state file created in the accounting phase
+	unlink("data/state");
+
+	CU_ASSERT_FATAL(open_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.set_data_calls == 2);
 
 	// let's try to avoid a 0-length session, even though we're using
 	// microseconds...
@@ -448,10 +458,9 @@ static void close_session_updates_state() {
 	CU_ASSERT(pamh.start_time != NULL);
 	CU_ASSERT(*pamh.start_time <= time(NULL));
 	CU_ASSERT(*pamh.start_time >= time(NULL)-60);
-	CU_ASSERT(stat("data/state", &statbuf) == -1);
 
 	CU_ASSERT_FATAL(close_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
-	CU_ASSERT(pamh.get_data_calls == 1);
+	CU_ASSERT(pamh.get_data_calls == 3);
 	CU_ASSERT(stat("data/state", &statbuf) == 0);
 }
 
@@ -482,6 +491,39 @@ static void close_session_updates_existing_record() {
 	CU_ASSERT(*pamh.start_time >= time(NULL)-60);
 	CU_ASSERT(stat("data/state", &statbuf) == 0);
 	CU_ASSERT(statbuf.st_size == filesize);
+}
+
+
+static void close_session_no_write_for_unlimited() {
+	const char *arg = "statepath=data/state";
+	const char *args[] = {
+		"path=data/limit_with_spaces",
+		"statepath=data/state"
+	};
+	struct stat statbuf;
+
+	pamh.username = "bob";
+
+	CU_ASSERT_FATAL(acct_mgmt(&pamh, 0, 2, args) == PAM_IGNORE);
+	CU_ASSERT(pamh.set_data_calls == 0);
+
+	// remove the state file created in the accounting phase
+	unlink("data/state");
+
+	CU_ASSERT_FATAL(open_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.set_data_calls == 1);
+
+	// let's try to avoid a 0-length session, even though we're using
+	// microseconds...
+	sleep(5);
+
+	CU_ASSERT(pamh.start_time != NULL);
+	CU_ASSERT(*pamh.start_time <= time(NULL));
+	CU_ASSERT(*pamh.start_time >= time(NULL)-60);
+
+	CU_ASSERT_FATAL(close_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
+	CU_ASSERT(pamh.get_data_calls == 1);
+	CU_ASSERT(stat("data/state", &statbuf) == -1);
 }
 
 
@@ -522,6 +564,8 @@ int main(int argc, char **argv)
 		  close_session_updates_state },
 		{ "close_session() updates existing record",
 		  close_session_updates_existing_record },
+		{ "close_session() does not write entry for unlimited user",
+		  close_session_no_write_for_unlimited },
 		CU_TEST_INFO_NULL,
 	};
 	CU_SuiteInfo suites[] = {
