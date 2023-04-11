@@ -321,12 +321,17 @@ static int parse_config_file(pam_handle_t *handle, const char *path,
 
 		ret = parse_config_line(line, &user, &limit);
 		if (ret != PAM_SUCCESS) {
+			free_config_file(results);
 			pam_syslog(handle, LOG_ERR, "invalid config file '%s'",
 			           path);
 			return PAM_PERM_DENIED;
 		}
 		if (!user || !limit)
+		{
+			free(user);
+			free(limit);
 			continue;
+		}
 
 		newresults = reallocarray(results, sizeof(char *),
 		                          ++usercount * 2 + 1);
@@ -437,9 +442,10 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 	                      (void *)runtime_max_sec, cleanup);
 	if (retval != PAM_SUCCESS) {
 		free((void *)runtime_max_sec);
-		free_config_file(user_table);
-		return PAM_PERM_DENIED;
+		retval = PAM_PERM_DENIED;
 	}
+
+	free_config_file(user_table);
 
 	return PAM_SUCCESS;
 }
