@@ -355,6 +355,38 @@ static int parse_config_file(pam_handle_t *handle, const char *path,
 }
 
 
+PAM_EXTERN int pam_sm_open_session(pam_handle_t *handle,
+                                   int flags,
+                                   int argc, const char **argv)
+{
+	int retval;
+	time_t *current_time = malloc(sizeof(time_t));
+
+	if (!current_time)
+		return PAM_BUF_ERR;
+
+	*current_time = time(NULL);
+
+	retval = pam_set_data(handle, "timelimit.session_start",
+	                      (void *)current_time, cleanup);
+
+	if (retval != PAM_SUCCESS) {
+		free(current_time);
+		return PAM_SYSTEM_ERR;
+	}
+	return PAM_SUCCESS;
+}
+
+
+PAM_EXTERN int pam_sm_close_session(pam_handle_t *handle,
+                                    int flags,
+                                    int argc, const char **argv)
+{
+
+	return PAM_SUCCESS;
+}
+
+
 PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
                                 int flags,
                                 int argc, const char **argv)

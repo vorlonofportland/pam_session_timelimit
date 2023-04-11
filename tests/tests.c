@@ -38,6 +38,7 @@
 typedef struct pam_handle {
 	char *username;
 	char *limit;
+	time_t *start_time;
 	unsigned int get_item_calls;
 	unsigned int set_data_calls;
 	unsigned int syslog_calls;
@@ -47,7 +48,7 @@ typedef int (*pam_module_fn)(pam_handle_t *handle,
                              int flags,
                              int argc, const char **argv);
 
-static pam_module_fn acct_mgmt;
+static pam_module_fn acct_mgmt, open_session, close_session;
 static pam_handle_t pamh;
 
 
@@ -59,6 +60,9 @@ int pam_set_data(pam_handle_t *pamh, const char *module_data_name,
 
 	if (!strcmp(module_data_name,"systemd.runtime_max_sec")) {
 		pamh->limit = data;
+		return PAM_SUCCESS;
+	} else if (!strcmp(module_data_name,"timelimit.session_start")) {
+		pamh->start_time = data;
 		return PAM_SUCCESS;
 	}
 	return PAM_BAD_ITEM;
@@ -405,6 +409,19 @@ static void state_file_no_crash_on_missing_NUL(void)
 }
 
 
+static void open_session_sets_time() {
+	CU_ASSERT_FATAL(open_session(&pamh, 0, 0, NULL) == PAM_SUCCESS);
+	CU_ASSERT(pamh.set_data_calls == 1);
+
+	CU_ASSERT(pamh.start_time != NULL);
+	CU_ASSERT(*pamh.start_time <= time(NULL));
+	// If this takes longer than a minute, something has gone wrong...
+	CU_ASSERT(*pamh.start_time >= time(NULL)-60);
+
+	free(pamh.start_time);
+}
+
+
 int main(int argc, char **argv)
 {
 	void *handle;
@@ -436,6 +453,8 @@ int main(int argc, char **argv)
 		  state_file_no_crash_on_missing_NUL },
 		{ "ignore state file entries with stale timestamp",
 		  state_file_ignore_stale_entry },
+		{ "open_session() sets time",
+		  open_session_sets_time },
 		CU_TEST_INFO_NULL,
 	};
 	CU_SuiteInfo suites[] = {
@@ -454,6 +473,18 @@ int main(int argc, char **argv)
 
 	acct_mgmt = (pam_module_fn) dlsym(handle, "pam_sm_acct_mgmt");
 	if (!acct_mgmt) {
+		fprintf(stderr, "Failed to resolve PAM symbol: %s\n",
+		        dlerror());
+		exit(1);
+	}
+	open_session = (pam_module_fn) dlsym(handle, "pam_sm_open_session");
+	if (!open_session) {
+		fprintf(stderr, "Failed to resolve PAM symbol: %s\n",
+		        dlerror());
+		exit(1);
+	}
+	close_session = (pam_module_fn) dlsym(handle, "pam_sm_close_session");
+	if (!open_session) {
 		fprintf(stderr, "Failed to resolve PAM symbol: %s\n",
 		        dlerror());
 		exit(1);
