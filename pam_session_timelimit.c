@@ -581,6 +581,9 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 		return PAM_PERM_DENIED;
 	}
 
+	if (timeval <= used_time)
+		return PAM_PERM_DENIED;
+
 	timeval -= used_time;
 
 	runtime_max_sec = malloc(FORMAT_TIMESPAN_MAX);
