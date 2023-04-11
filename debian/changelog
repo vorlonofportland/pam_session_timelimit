@@ -1,3 +1,9 @@
+pam-session-timelimit (0.6-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+
+ -- Steve Langasek <vorlon@debian.org>  Tue, 11 Apr 2023 23:21:36 +0000
+
 pam-session-timelimit (0.5-1) unstable; urgency=medium
 
   * Initial release.  Closes: #1034266.
