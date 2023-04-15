@@ -8,6 +8,13 @@ Copyright:
  2023 Steve Langasek <vorlon@dodds.net>
 License: LGPL-3.0+
 
+Files: time-util.c time-util.h
+Copyright:
+ 2012-2015 Lennart Poettering,
+ 2014-2023 Zbigniew Jędrzejewski-Szmek <zbyszek@in.waw.pl>,
+ 2022-2023 Yu Watanabe
+License: LGPL-3.0+
+
 Files:
  debian/*
 Copyright:

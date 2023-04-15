@@ -1,3 +1,9 @@
+pam-session-timelimit (0.6-2) UNRELEASED; urgency=medium
+
+  * Add time-util* to debian/copyright.
+
+ -- Steve Langasek <vorlon@debian.org>  Sat, 15 Apr 2023 20:37:12 +0000
+
 pam-session-timelimit (0.6-1) unstable; urgency=medium
 
   * New upstream release.
