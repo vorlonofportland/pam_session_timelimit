@@ -27,6 +27,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/file.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -512,11 +513,11 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
                                 int argc, const char **argv)
 {
 	const char *path = NULL, *statepath = NULL, *username = NULL;
-	char *runtime_max_sec = NULL;
+	char *current_limit = NULL, *runtime_max_sec = NULL;
 	char **user_table;
 	unsigned int i;
 	int retval;
-	usec_t timeval = 0, used_time = 0;
+	usec_t timeval = 0, old_timeval = 0, used_time = 0;
 
 	for (; argc-- > 0; ++argv) {
 		if (strncmp(*argv, "path=", strlen("path=")) == 0)
@@ -586,18 +587,28 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *handle,
 
 	timeval -= used_time;
 
-	runtime_max_sec = malloc(FORMAT_TIMESPAN_MAX);
-	if (!format_timespan(runtime_max_sec, FORMAT_TIMESPAN_MAX, timeval,
-	                     USEC_PER_SEC)) {
-		free((void *)runtime_max_sec);
-		return PAM_PERM_DENIED;
+	pam_get_data(handle, "systemd.runtime_max_sec",
+	             (const void **)&current_limit);
+	if (current_limit) {
+		retval = parse_time(current_limit, &old_timeval, USEC_PER_SEC);
+		timeval = MIN(old_timeval, timeval);
 	}
 
-        retval = pam_set_data(handle, "systemd.runtime_max_sec",
-	                      (void *)runtime_max_sec, cleanup);
-	if (retval != PAM_SUCCESS) {
-		free((void *)runtime_max_sec);
-		retval = PAM_PERM_DENIED;
+	if (timeval != old_timeval) {
+		runtime_max_sec = malloc(FORMAT_TIMESPAN_MAX);
+		if (!format_timespan(runtime_max_sec, FORMAT_TIMESPAN_MAX,
+		                     timeval, USEC_PER_SEC))
+		{
+			free((void *)runtime_max_sec);
+			return PAM_PERM_DENIED;
+		}
+
+	        retval = pam_set_data(handle, "systemd.runtime_max_sec",
+		                      (void *)runtime_max_sec, cleanup);
+		if (retval != PAM_SUCCESS) {
+			free((void *)runtime_max_sec);
+			retval = PAM_PERM_DENIED;
+		}
 	}
 
 	return retval;

@@ -460,7 +460,7 @@ static void close_session_updates_state() {
 	CU_ASSERT(*pamh.start_time >= time(NULL)-60);
 
 	CU_ASSERT_FATAL(close_session(&pamh, 0, 1, &arg) == PAM_SUCCESS);
-	CU_ASSERT(pamh.get_data_calls == 3);
+	CU_ASSERT(pamh.get_data_calls == 4);
 	CU_ASSERT(stat("data/state", &statbuf) == 0);
 }
 
